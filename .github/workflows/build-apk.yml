@@ -40,8 +40,23 @@ jobs:
         run: chmod +x ./gradlew
 
       # ---------- Static checks ----------
+      # Compile + unit test. Any Kotlin error is echoed back as a GitHub
+      # annotation so the failure is readable directly on the PR.
       - name: Run unit tests
-        run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
+        run: |
+          set +e
+          ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace 2>&1 | tee gradle-test.log
+          STATUS=${PIPESTATUS[0]}
+          if [ "$STATUS" -ne 0 ]; then
+            echo "--- Kotlin / Gradle errors ---"
+            grep -E "^e: |error:|FAILURE:|What went wrong|Caused by|Could not" gradle-test.log \
+              | head -n 9 | while IFS= read -r line; do
+                echo "::error::$line"
+              done
+            echo "--- last 40 lines ---"
+            tail -n 40 gradle-test.log
+            exit "$STATUS"
+          fi
 
       # ---------- Signing ----------
       # A throwaway keystore is generated for CI builds so the release APK is
