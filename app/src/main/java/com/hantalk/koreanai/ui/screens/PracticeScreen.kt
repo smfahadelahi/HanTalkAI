@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -55,9 +56,15 @@ fun PracticeScreen(
     val context = LocalContext.current
     val speaker = remember { KoreanSpeaker(context) }
 
-    DisposableEffect(Unit) {
+    // Start a session only when entering the screen with no phrase, and only
+    // once per composition — never on every recomposition.
+    LaunchedEffect(startWith) {
         if (state.phrase == null) viewModel.startPractice()
-        onDispose { }
+    }
+
+    // The TTS engine is a system resource: release it when the screen leaves.
+    DisposableEffect(speaker) {
+        onDispose { speaker.shutdown() }
     }
 
     Column(
