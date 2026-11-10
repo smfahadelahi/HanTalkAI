@@ -16,7 +16,7 @@ object LocalTutor {
     private data class Rule(val keywords: List<String>, val answer: (String) -> String)
 
     private val rules: List<Rule> = listOf(
-        Rule(listOf("안녕", "hello", "hi ", "greeting", "인사")) {
+        Rule(listOf("안녕", "hello", "greeting", "인사")) {
             """
             |안녕하세요! 👋 Nice to meet you.
             |
@@ -29,7 +29,7 @@ object LocalTutor {
             ||안녕히 가세요|annyeonghi gaseyo|The other person is leaving|
             |
             |**자가소개 (self-introduction)**
-            |저는 ___ 입니다. *jeoneun ___ imnida.* — “I am ___.”
+            |저는 ___ 입니다. *jeoneun ___ imnida.* — "I am ___."
             |
             |Try writing: 안녕하세요, 저는 민수입니다.
             """.trimMargin()
@@ -62,10 +62,10 @@ object LocalTutor {
             |
             |Sounds that surprise English speakers:
             |• ㄹ is a light flap, between *r* and *l*.
-            |• ㄱ/ㄷ/ㅂ/ㅈ are soft at the start of a word (closer to *k/t/p/ch*) and hard in the middle.
+            |• ㄱ/ㄷ/ㅂ/ㅈ are soft at the start of a word and hard in the middle.
             |• ㅇ is silent at the start and *ng* at the end.
             |
-            |Open the **Alphabet** tab to practise each letter.
+            |Open the **한글** tab to practise each letter.
             """.trimMargin()
         },
         Rule(listOf("number", "숫자", "sino", "native", "count")) {
@@ -78,13 +78,13 @@ object LocalTutor {
             |**Native Korean** (counting things, age, hours)
             |1 하나 · 2 둘 · 3 셋 · 4 넷 · 5 다섯 · 6 여섯 · 7 일곱 · 8 여덟 · 9 아홉 · 10 열
             |
-            |Say your age: 저는 스무 살이에요. (*jeoneun seumu sarieyo*) — “I'm 20.”
-            |Say the price: 이거 얼마예요? (*igeo eolmayeyo?*) — “How much is this?”
+            |Say your age: 저는 스무 살이에요. (*jeoneun seumu sarieyo*) — "I'm 20."
+            |Ask the price: 이거 얼마예요? (*igeo eolmayeyo?*) — "How much is this?"
             """.trimMargin()
         },
         Rule(listOf("roman", "pronounce", "발음", "how do i say")) {
             """
-            |Give me a Korean word and I'll break it into jamo and romanise it — for example:
+            |Give me a Korean word and I'll break it into jamo and romanise it:
             |
             |**한국어** → 한 · 국 · 어 → *hangugeo*
             |**감사합니다** → *gamsahamnida*
@@ -92,25 +92,25 @@ object LocalTutor {
             |Two rules worth memorising:
             |1. A 받침 moves into the next syllable when that syllable starts with ㅇ:
             |   한국어 → 한구거 → *hangugeo*
-            |2. ㅎ is weak between vowels: 좋아 → *joa*
+            |2. Nasals pull the sound forward: 합니다 → *hamnida*
             """.trimMargin()
         },
-        Rule(listOf("grammar", "문법", "particle", "은/는", "이/가", "topic"), {
+        Rule(listOf("grammar", "문법", "particle", "은/는", "이/가", "topic")) {
             """
             |**The particle starter pack**
             |
             ||Particle|Job|Example|
             ||---|---|---|
-            ||은/는|topic — “as for …”|저**는** 학생이에요|
-            ||이/가|subject|비**가** 와요|
-            ||을/를|object|밥**을** 먹어요|
-            ||에|time / direction|학교**에** 가요|
-            ||에서|location of an action|집**에서** 공부해요|
+            ||은/는|topic — "as for …"|저는 학생이에요|
+            ||이/가|subject|비가 와요|
+            ||을/를|object|밥을 먹어요|
+            ||에|time / direction|학교에 가요|
+            ||에서|location of an action|집에서 공부해요|
             |
             |Pick 은/는 or 을/를 when the word ends in a consonant, 는/를 when it ends in a vowel:
             |밥 + 을 = 밥을, 나 + 를 = 나를
             |
-            |Word order is **Subject – Object – Verb**: 저는 밥을 먹어요 = “I rice eat”.
+            |Word order is **Subject – Object – Verb**: 저는 밥을 먹어요 = "I rice eat".
             """.trimMargin()
         },
         Rule(listOf("thank", "감사", "sorry", "미안", "polite", "존댓말")) {
@@ -134,11 +134,11 @@ object LocalTutor {
             |**A 4-week plan that actually works**
             |
             |**Week 1 — read anything.** Learn 14 consonants + 10 vowels, then sound out shop signs.
-            |**Week 2 — blocks.** Practise batchim pairs: 밥, 집, 옷, 강, 눈, 물.
+            |**Week 2 — blocks.** Practise batchim words: 밥, 집, 옷, 강, 눈, 물.
             |**Week 3 — survival phrases.** 30 phrases beats 300 vocabulary words.
             |**Week 4 — output.** Write 3 sentences a day about your real day.
             |
-            |Use the **Lessons** tab for the phrase sets, the **Alphabet** tab to drill letters,
+            |Use the **Lessons** tab for phrase sets, the **한글** tab to drill letters,
             |and **Practice** to speak a phrase and get a score.
             |
             |화이팅! 💪
@@ -148,12 +148,12 @@ object LocalTutor {
             """
             |Paste the Korean and I'll break it down syllable by syllable:
             |
-            |**안녕하세요** → 안 · 녕 · 하 · 세 · 요 → *annyeonghaseyo* → “hello”
+            |**안녕하세요** → 안 · 녕 · 하 · 세 · 요 → *annyeonghaseyo* → "hello"
             |
-            |If you need a full translation, install the on-device model from the **AI Tutor** tab and ask me there —
-            |it runs entirely on your phone with no internet.
+            |If you need a full translation, install the on-device model from the **AI models**
+            |screen (top-right menu in the tutor) and ask me there — it runs entirely on your phone.
             """.trimMargin()
-        })
+        }
     )
 
     private val wordBank = setOf(
