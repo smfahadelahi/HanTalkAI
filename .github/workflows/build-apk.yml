@@ -140,6 +140,17 @@ jobs:
           ls -lh "$RELEASE_APK" "$DEBUG_APK"
           echo "APK_SIZE_BYTES=$(stat -c%s "$RELEASE_APK")" >> "$GITHUB_ENV"
 
+          # --- content report (also written to the job summary) ---
+          echo "--- contents ---"
+          unzip -l "$RELEASE_APK" | tail -n 3
+          echo "dex: $(unzip -l "$RELEASE_APK" | grep -c 'classes.*\.dex')"
+          echo "native abis: $(unzip -l "$RELEASE_APK" | grep -oE 'lib/[^/]+' | sort -u | tr '\n' ' ')"
+          echo "launcher label: $(aapt2 dump badging "$RELEASE_APK" 2>/dev/null | grep -m1 "application-label")"
+          echo "sdk: $(aapt2 dump badging "$RELEASE_APK" 2>/dev/null | grep -m1 "sdkVersion")"
+          echo "package: $(aapt2 dump badging "$RELEASE_APK" 2>/dev/null | grep -m1 "^package:")"
+          echo "--- signature ---"
+          "$APKSIGNER" verify --print-certs "$RELEASE_APK" | head -n 4
+
       - name: Upload signed release APK
         uses: actions/upload-artifact@v4
         with:
