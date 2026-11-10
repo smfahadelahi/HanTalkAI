@@ -54,7 +54,7 @@ class HangulTest {
 
     @Test
     fun `counts syllables only`() {
-        assertEquals(3, Hangul.syllableCount("안녕하세요"))
+        assertEquals(5, Hangul.syllableCount("안녕하세요"))
         assertEquals(2, Hangul.syllableCount("한글 123"))
     }
 
