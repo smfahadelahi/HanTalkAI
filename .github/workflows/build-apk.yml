@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -173,6 +173,49 @@ jobs:
           path: app/build/reports/tests/
           if-no-files-found: ignore
 
+      # ---------- Publish a downloadable release ----------
+      # Runs on main pushes and manual dispatches (not on pull requests, so a PR
+      # never publishes). The APK is attached to the release instead of being
+      # committed, which would bloat the git history by ~43 MB per build.
+      - name: Name the APK
+        if: github.event_name != 'pull_request'
+        id: apkname
+        run: |
+          set -euo pipefail
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts | head -n1)
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n1)
+          OUT="HanTalkAI-${VERSION}-release.apk"
+          cp "$APK" "$RUNNER_TEMP/$OUT"
+          echo "file=$RUNNER_TEMP/$OUT" >> "$GITHUB_OUTPUT"
+          echo "name=$OUT" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Copied $APK -> $OUT"
+
+      - name: Publish GitHub Release
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.apkname.outputs.version }}-build.${{ github.run_number }}
+          name: HanTalk AI v${{ steps.apkname.outputs.version }} (build ${{ github.run_number }})
+          body: |
+            **Installable Android APK** — HanTalk AI v${{ steps.apkname.outputs.version }}
+
+            Download `${{ steps.apkname.outputs.name }}` below and install it on your phone
+            (Android 8.0+). You will need to allow "install unknown apps".
+
+            - Signed release build (${{ steps.apkname.outputs.version }})
+            - Minified, resource-shrunk
+            - Model files are **not** bundled — install one in-app if you want the LLM
+              tutor; the rule-based tutor works immediately.
+
+            Built from `${{ github.sha }}`.
+          files: ${{ steps.apkname.outputs.file }}
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Summary
         run: |
           {
@@ -182,5 +225,9 @@ jobs:
             echo "- Unit tests: passed"
             echo "- Signing: verified"
             echo ""
-            echo "Download the installable APK from the **HanTalkAI-release-apk** artifact."
+            if [ "${{ github.event_name }}" != "pull_request" ]; then
+              echo "Download the APK from the **Releases** page (or the HanTalkAI-release-apk artifact)."
+            else
+              echo "Download the installable APK from the **HanTalkAI-release-apk** artifact."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
