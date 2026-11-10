@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 흰색 말풍선 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M32,30h44a10,10 0 0 1 10,10v24a10,10 0 0 1 -10,10h-20l-14,12v-12h-10a10,10 0 0 1 -10,-10v-24a10,10 0 0 1 10,-10z" />
+    <!-- 한 -->
+    <path
+        android:fillColor="#FF4466D5"
+        android:pathData="M42,42h6v8h6v-8h6v24h-6v-11h-6v11h-6z" />
+    <!-- 글 -->
+    <path
+        android:fillColor="#FF4466D5"
+        android:pathData="M64,42h6v14h-6z M64,60h6v6h-6z" />
+</vector>

@@ -1,0 +1,25 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Build output
+app/build/
+build/
+
+# Signing material must never be committed
+keystore/
+*.jks
+*.keystore
+
+# Machine learning models (hundreds of MB - fetch at runtime instead)
+*.task
+*.bin
+*.gguf
+models/

@@ -1,144 +1,233 @@
-name: Build Signed Android APK
+name: Build HanTalk AI APK
 
 on:
   push:
     branches: [ "main", "master" ]
+  pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  build-apk:
+  build:
+    name: Build & verify APK
     runs-on: ubuntu-latest
+    timeout-minutes: 40
+
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Gradle
+      - name: Point Gradle at the preinstalled Android SDK
+        run: |
+          ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          ls "$ANDROID_SDK_ROOT" | head
+
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Ensure Android Project & Keystore
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # ---------- Static checks ----------
+      # Compile + unit test. Any Kotlin error is echoed back as a GitHub
+      # annotation so the failure is readable directly on the PR.
+      - name: Run unit tests
         run: |
-          if [ ! -f "settings.gradle.kts" ]; then
-            cat << 'EOF' > settings.gradle.kts
-          pluginManagement {
-              repositories { google(); mavenCentral(); gradlePluginPortal() }
-          }
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories { google(); mavenCentral() }
-          }
-          rootProject.name = "HanTalkAI"
-          include(":app")
-          EOF
-            cat << 'EOF' > build.gradle.kts
-          plugins {
-              id("com.android.application") version "8.7.2" apply false
-              id("org.jetbrains.kotlin.android") version "2.0.21" apply false
-              id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
-          }
-          EOF
-            cat << 'EOF' > gradle.properties
-          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-          android.useAndroidX=true
-          EOF
-            mkdir -p app/src/main/java/com/hantalk/koreanai app/src/main/res/values
-            cat << 'EOF' > app/build.gradle.kts
-          plugins {
-              id("com.android.application")
-              id("org.jetbrains.kotlin.android")
-              id("org.jetbrains.kotlin.plugin.compose")
-          }
-          android {
-              namespace = "com.hantalk.koreanai"
-              compileSdk = 35
-              defaultConfig {
-                  applicationId = "com.hantalk.koreanai"
-                  minSdk = 26
-                  targetSdk = 35
-                  versionCode = 1
-                  versionName = "1.0.0"
-              }
-              signingConfigs {
-                  create("release") {
-                      storeFile = file("release-key.jks")
-                      storePassword = "android123"
-                      keyAlias = "app_key_alias"
-                      keyPassword = "android123"
-                  }
-              }
-              buildTypes {
-                  release {
-                      isMinifyEnabled = false
-                      signingConfig = signingConfigs.getByName("release")
-                  }
-              }
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
-              kotlinOptions { jvmTarget = "17" }
-              buildFeatures { compose = true }
-          }
-          dependencies {
-              implementation("androidx.core:core-ktx:1.15.0")
-              implementation("androidx.activity:activity-compose:1.9.3")
-              implementation(platform("androidx.compose:compose-bom:2024.10.01"))
-              implementation("androidx.compose.ui:ui")
-              implementation("androidx.compose.material3:material3")
-              implementation("com.google.mediapipe:tasks-genai:0.10.14")
-          }
-          EOF
-            cat << 'EOF' > app/src/main/AndroidManifest.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.RECORD_AUDIO" />
-              <uses-permission android:name="android.permission.INTERNET" />
-              <application android:allowBackup="true" android:label="HanTalk AI" android:supportsRtl="true" android:theme="@android:style/Theme.Material.Light.NoActionBar">
-                  <activity android:name=".MainActivity" android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-              </application>
-          </manifest>
-          EOF
-            cat << 'EOF' > app/src/main/java/com/hantalk/koreanai/MainActivity.kt
-          package com.hantalk.koreanai
-          import android.os.Bundle
-          import androidx.activity.ComponentActivity
-          import androidx.activity.compose.setContent
-          import androidx.compose.material3.MaterialTheme
-          import androidx.compose.material3.Surface
-          import androidx.compose.material3.Text
-          class MainActivity : ComponentActivity() {
-              override fun onCreate(savedInstanceState: Bundle?) {
-                  super.onCreate(savedInstanceState)
-                  setContent { MaterialTheme { Surface { Text("HanTalk AI (한톡 AI) - Local LLM Korean Tutor") } } }
-              }
-          }
-          EOF
-          fi
-          if [ ! -f "app/release-key.jks" ]; then
-            keytool -genkeypair -v -keystore app/release-key.jks -alias app_key_alias -keyalg RSA -keysize 2048 -validity 10000 -storepass android123 -keypass android123 -dname "CN=HanTalkAI, OU=Mobile, O=AndroidBuilder, L=Seoul, S=Gyeonggi, C=KR"
+          set +e
+          ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace 2>&1 | tee gradle-test.log
+          STATUS=${PIPESTATUS[0]}
+          if [ "$STATUS" -ne 0 ]; then
+            echo "--- Kotlin / Gradle errors ---"
+            # failing assertion messages
+            grep -hE "expected:|AssertionError|expected .* but was|ComparisonFailure" \
+              app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null \
+              | sed 's/&quot;/"/g; s/&lt;/</g; s/&gt;/>/g' \
+              | sort -u | head -n 10 | while IFS= read -r line; do
+                echo "::error::TEST $line"
+              done
+            # failing test names
+            grep -hoE 'testcase name="[^"]*" classname="[^"]*"' \
+              app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null | head -n 20 \
+              | while IFS= read -r line; do echo "note: $line"; done
+            grep -E "^e: |FAILURE:|What went wrong|Could not" gradle-test.log \
+              | head -n 9 | while IFS= read -r line; do
+                echo "::error::$line"
+              done
+            echo "--- last 40 lines ---"
+            tail -n 40 gradle-test.log
+            exit "$STATUS"
           fi
 
-      - name: Compile Debug and Signed Release APKs
-        run: gradle assembleDebug assembleRelease --no-daemon
+      # ---------- Signing ----------
+      # A throwaway keystore is generated for CI builds so the release APK is
+      # installable. It is written outside the repository and never committed.
+      # For a real release, add KEYSTORE_BASE64 / KEYSTORE_PASSWORD /
+      # KEY_ALIAS / KEY_PASSWORD as repository secrets.
+      - name: Prepare keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          KEYSTORE_DIR="$RUNNER_TEMP/keystore"
+          mkdir -p "$KEYSTORE_DIR"
+          KEYSTORE_PATH="$KEYSTORE_DIR/hantalk-release.jks"
 
-      - name: Upload Signed Release APK
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
+            echo "Using keystore from repository secrets."
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+            echo "HANTALK_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "HANTALK_KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> "$GITHUB_ENV"
+            echo "HANTALK_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> "$GITHUB_ENV"
+          else
+            echo "No keystore secret found - generating a throwaway CI keystore."
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE_PATH" \
+              -alias hantalk \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "hantalk-ci-password" \
+              -keypass "hantalk-ci-password" \
+              -dname "CN=HanTalk AI CI, OU=Mobile, O=HanTalk, L=Seoul, C=KR"
+            echo "HANTALK_STORE_PASSWORD=hantalk-ci-password" >> "$GITHUB_ENV"
+            echo "HANTALK_KEY_ALIAS=hantalk" >> "$GITHUB_ENV"
+            echo "HANTALK_KEY_PASSWORD=hantalk-ci-password" >> "$GITHUB_ENV"
+          fi
+
+          echo "HANTALK_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+
+      # ---------- Build ----------
+      - name: Build debug and signed release APKs
+        run: |
+          ./gradlew :app:assembleDebug :app:assembleRelease \
+            --no-daemon --stacktrace
+
+      # ---------- Verification ----------
+      - name: Verify APK outputs
+        run: |
+          set -euo pipefail
+          RELEASE_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          DEBUG_APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+
+          echo "Release APK: $RELEASE_APK"
+          echo "Debug APK:   $DEBUG_APK"
+
+          test -n "$RELEASE_APK" || { echo "::error::No release APK produced"; exit 1; }
+          test -n "$DEBUG_APK"   || { echo "::error::No debug APK produced"; exit 1; }
+
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          echo "Using build-tools: $BUILD_TOOLS"
+
+          # The manifest must expose exactly one launcher activity.
+          "$BUILD_TOOLS/aapt2" dump xmltree --file AndroidManifest.xml "$RELEASE_APK" \
+            | grep -q "android.intent.category.LAUNCHER" \
+            || { echo "::error::Launcher intent missing"; exit 1; }
+
+          # A release build must never ship unsigned.
+          APKSIGNER="$BUILD_TOOLS/apksigner"
+          "$APKSIGNER" verify --verbose "$RELEASE_APK" \
+            || { echo "::error::Release APK is not correctly signed"; exit 1; }
+
+          ls -lh "$RELEASE_APK" "$DEBUG_APK"
+          echo "APK_SIZE_BYTES=$(stat -c%s "$RELEASE_APK")" >> "$GITHUB_ENV"
+
+          # --- content report (also written to the job summary) ---
+          echo "--- contents ---"
+          unzip -l "$RELEASE_APK" | tail -n 3
+          echo "dex: $(unzip -l "$RELEASE_APK" | grep -c 'classes.*\.dex')"
+          echo "native abis: $(unzip -l "$RELEASE_APK" | grep -oE 'lib/[^/]+' | sort -u | tr '\n' ' ')"
+          echo "launcher label: $(aapt2 dump badging "$RELEASE_APK" 2>/dev/null | grep -m1 "application-label")"
+          echo "sdk: $(aapt2 dump badging "$RELEASE_APK" 2>/dev/null | grep -m1 "sdkVersion")"
+          echo "package: $(aapt2 dump badging "$RELEASE_APK" 2>/dev/null | grep -m1 "^package:")"
+          echo "--- signature ---"
+          "$APKSIGNER" verify --print-certs "$RELEASE_APK" | head -n 4
+
+      - name: Upload signed release APK
         uses: actions/upload-artifact@v4
         with:
           name: HanTalkAI-release-apk
           path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
 
-      - name: Upload Debug APK
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: HanTalkAI-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
+
+      # ---------- Publish a downloadable release ----------
+      # Runs on main pushes and manual dispatches (not on pull requests, so a PR
+      # never publishes). The APK is attached to the release instead of being
+      # committed, which would bloat the git history by ~43 MB per build.
+      - name: Name the APK
+        if: github.event_name != 'pull_request'
+        id: apkname
+        run: |
+          set -euo pipefail
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts | head -n1)
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n1)
+          OUT="HanTalkAI-${VERSION}-release.apk"
+          cp "$APK" "$RUNNER_TEMP/$OUT"
+          echo "file=$RUNNER_TEMP/$OUT" >> "$GITHUB_OUTPUT"
+          echo "name=$OUT" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Copied $APK -> $OUT"
+
+      - name: Publish GitHub Release
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.apkname.outputs.version }}-build.${{ github.run_number }}
+          name: HanTalk AI v${{ steps.apkname.outputs.version }} (build ${{ github.run_number }})
+          body: |
+            **Installable Android APK** — HanTalk AI v${{ steps.apkname.outputs.version }}
+
+            Download `${{ steps.apkname.outputs.name }}` below and install it on your phone
+            (Android 8.0+). You will need to allow "install unknown apps".
+
+            - Signed release build (${{ steps.apkname.outputs.version }})
+            - Minified, resource-shrunk
+            - Model files are **not** bundled — install one in-app if you want the LLM
+              tutor; the rule-based tutor works immediately.
+
+            Built from `${{ github.sha }}`.
+          files: ${{ steps.apkname.outputs.file }}
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          {
+            echo "## HanTalk AI build"
+            echo ""
+            echo "- Release APK size: **$((APK_SIZE_BYTES / 1024 / 1024)) MB**"
+            echo "- Unit tests: passed"
+            echo "- Signing: verified"
+            echo ""
+            if [ "${{ github.event_name }}" != "pull_request" ]; then
+              echo "Download the APK from the **Releases** page (or the HanTalkAI-release-apk artifact)."
+            else
+              echo "Download the installable APK from the **HanTalkAI-release-apk** artifact."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
