@@ -95,7 +95,7 @@ object LocalTutor {
             |2. ㅎ is weak between vowels: 좋아 → *joa*
             """.trimMargin()
         },
-        Rule(listOf("grammar", "문법", "particle", "은/는", "이/가", "topic")) {
+        Rule(listOf("grammar", "문법", "particle", "은/는", "이/가", "topic"), {
             """
             |**The particle starter pack**
             |
@@ -112,7 +112,7 @@ object LocalTutor {
             |
             |Word order is **Subject – Object – Verb**: 저는 밥을 먹어요 = “I rice eat”.
             """.trimMargin()
-        }),
+        },
         Rule(listOf("thank", "감사", "sorry", "미안", "polite", "존댓말")) {
             """
             |**Politeness you can use today**
@@ -128,7 +128,7 @@ object LocalTutor {
             |
             |Adding **-요** to a plain verb makes it polite. That single 요 carries a lot of goodwill.
             """.trimMargin()
-        }),
+        },
         Rule(listOf("study", "learn", "how", "start", "beginner", "공부")) {
             """
             |**A 4-week plan that actually works**
@@ -143,7 +143,7 @@ object LocalTutor {
             |
             |화이팅! 💪
             """.trimMargin()
-        }),
+        },
         Rule(listOf("translate", "meaning", "번역", "뜻")) {
             """
             |Paste the Korean and I'll break it down syllable by syllable:
