@@ -140,6 +140,15 @@ jobs:
           ls -lh "$RELEASE_APK" "$DEBUG_APK"
           echo "APK_SIZE_BYTES=$(stat -c%s "$RELEASE_APK")" >> "$GITHUB_ENV"
 
+          # Absolute sizes, surfaced as annotations because job logs are large.
+          REL_BYTES=$(stat -c%s "$RELEASE_APK")
+          DBG_BYTES=$(stat -c%s "$DEBUG_APK")
+          NATIVE_BYTES=$(unzip -l "$RELEASE_APK" | awk '/lib\/.*\.so$/ {s+=$1} END {print s+0}')
+          echo "::notice::RELEASE_APK_BYTES=$REL_BYTES ($((REL_BYTES/1048576)) MB)"
+          echo "::notice::DEBUG_APK_BYTES=$DBG_BYTES ($((DBG_BYTES/1048576)) MB)"
+          echo "::notice::NATIVE_LIB_BYTES=$NATIVE_BYTES ($((NATIVE_BYTES/1048576)) MB in .so files)"
+          echo "::notice::ZIP_TOTAL=$(unzip -l "$RELEASE_APK" | tail -n1)"
+
           # --- content report (also written to the job summary) ---
           echo "--- contents ---"
           unzip -l "$RELEASE_APK" | tail -n 3
