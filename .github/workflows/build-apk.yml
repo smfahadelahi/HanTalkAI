@@ -49,7 +49,18 @@ jobs:
           STATUS=${PIPESTATUS[0]}
           if [ "$STATUS" -ne 0 ]; then
             echo "--- Kotlin / Gradle errors ---"
-            grep -E "^e: |error:|FAILURE:|What went wrong|Caused by|Could not" gradle-test.log \
+            # failing assertion messages
+            grep -hE "expected:|AssertionError|expected .* but was|ComparisonFailure" \
+              app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null \
+              | sed 's/&quot;/"/g; s/&lt;/</g; s/&gt;/>/g' \
+              | sort -u | head -n 10 | while IFS= read -r line; do
+                echo "::error::TEST $line"
+              done
+            # failing test names
+            grep -hoE 'testcase name="[^"]*" classname="[^"]*"' \
+              app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null | head -n 20 \
+              | while IFS= read -r line; do echo "note: $line"; done
+            grep -E "^e: |FAILURE:|What went wrong|Could not" gradle-test.log \
               | head -n 9 | while IFS= read -r line; do
                 echo "::error::$line"
               done
