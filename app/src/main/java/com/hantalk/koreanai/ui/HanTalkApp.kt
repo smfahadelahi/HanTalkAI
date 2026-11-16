@@ -202,18 +202,23 @@ private fun NavItem(
             modifier = Modifier.padding(vertical = 6.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                // Gradient pill behind the selected icon.
-                AnimatedVisibility(
-                    visible = selected,
-                    enter = fadeIn() + scaleIn(initialScale = 0.7f),
-                    exit = fadeOut() + scaleOut(targetScale = 0.7f)
-                ) {
-                    Box(
-                        Modifier
-                            .size(width = 46.dp, height = 30.dp)
-                            .clip(RoundedCornerShape(15.dp))
-                            .background(Brush.linearGradient(HanTalkTokens.gradients.brand))
-                    )
+                // Gradient pill behind the selected icon. Wrapped in a Box so the
+                // top-level (non-ColumnScope) AnimatedVisibility overload is used.
+                Box {
+                    AnimatedVisibility(
+                        visible = selected,
+                        enter = fadeIn() + scaleIn(initialScale = 0.7f),
+                        exit = fadeOut() + scaleOut(targetScale = 0.7f)
+                    ) {
+                        Box(
+                            Modifier
+                                .size(width = 46.dp, height = 30.dp)
+                                .clip(RoundedCornerShape(15.dp))
+                                .background(
+                                    Brush.linearGradient(HanTalkTokens.gradients.brand)
+                                )
+                        )
+                    }
                 }
                 Icon(
                     imageVector = entry.icon,
