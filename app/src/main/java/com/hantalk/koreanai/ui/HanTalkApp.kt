@@ -1,13 +1,9 @@
 package com.hantalk.koreanai.ui
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -43,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -202,23 +199,33 @@ private fun NavItem(
             modifier = Modifier.padding(vertical = 6.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                // Gradient pill behind the selected icon. Wrapped in a Box so the
-                // top-level (non-ColumnScope) AnimatedVisibility overload is used.
-                Box {
-                    AnimatedVisibility(
-                        visible = selected,
-                        enter = fadeIn() + scaleIn(initialScale = 0.7f),
-                        exit = fadeOut() + scaleOut(targetScale = 0.7f)
-                    ) {
-                        Box(
-                            Modifier
-                                .size(width = 46.dp, height = 30.dp)
-                                .clip(RoundedCornerShape(15.dp))
-                                .background(
-                                    Brush.linearGradient(HanTalkTokens.gradients.brand)
-                                )
-                        )
-                    }
+                // Gradient pill behind the selected icon. Animated with a plain
+                // graphicsLayer fade/scale rather than AnimatedVisibility, which
+                // would resolve to the ColumnScope overload inside this Column.
+                val pillAlpha by animateFloatAsState(
+                    targetValue = if (selected) 1f else 0f,
+                    animationSpec = tween(180),
+                    label = "pillAlpha"
+                )
+                val pillScale by animateFloatAsState(
+                    targetValue = if (selected) 1f else 0.7f,
+                    animationSpec = spring(dampingRatio = 0.55f),
+                    label = "pillScale"
+                )
+                if (pillAlpha > 0.01f) {
+                    Box(
+                        Modifier
+                            .size(width = 46.dp, height = 30.dp)
+                            .graphicsLayer {
+                                alpha = pillAlpha
+                                scaleX = pillScale
+                                scaleY = pillScale
+                            }
+                            .clip(RoundedCornerShape(15.dp))
+                            .background(
+                                Brush.linearGradient(HanTalkTokens.gradients.brand)
+                            )
+                    )
                 }
                 Icon(
                     imageVector = entry.icon,
