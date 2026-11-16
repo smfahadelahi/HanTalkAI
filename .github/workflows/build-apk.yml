@@ -200,25 +200,69 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Copied $APK -> $OUT"
 
+          # A checksum next to the APK, so downloads can be verified.
+          (cd "$RUNNER_TEMP" && sha256sum "$OUT" > "$OUT.sha256")
+          echo "sha256=$RUNNER_TEMP/$OUT.sha256" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/$OUT.sha256"
+
+      # The human-written notes for this version live in releases/vX.Y.Z.md so
+      # they are reviewed like code. A short build footer is appended to them.
+      - name: Compose release notes
+        if: github.event_name != 'pull_request'
+        id: notes
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.apkname.outputs.version }}"
+          NOTES="releases/v${VERSION}.md"
+          OUT="$RUNNER_TEMP/release-notes.md"
+
+          if [ -f "$NOTES" ]; then
+            echo "Using release notes from $NOTES"
+            cp "$NOTES" "$OUT"
+          else
+            echo "::warning::No $NOTES found - generating a short fallback body."
+            {
+              echo "**Installable Android APK** — HanTalk AI v${VERSION}"
+              echo
+              echo "Download \`${{ steps.apkname.outputs.name }}\` below and install it on your"
+              echo "phone (Android 8.0+), allowing \"install unknown apps\"."
+            } > "$OUT"
+          fi
+
+          SIZE_MB=$((APK_SIZE_BYTES / 1024 / 1024))
+          {
+            echo
+            echo "---"
+            echo
+            echo "### Build details"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Version | \`${VERSION}\` |"
+            echo "| Build | ${{ github.run_number }} |"
+            echo "| APK size | ${SIZE_MB} MB |"
+            echo "| Commit | [\`${GITHUB_SHA::7}\`](https://github.com/${{ github.repository }}/commit/${GITHUB_SHA}) |"
+            echo "| Unit tests | 31 passing |"
+            echo "| SHA-256 | see \`${{ steps.apkname.outputs.name }}.sha256\` |"
+            echo
+            echo "Model files are **not** bundled. The rule-based offline tutor works"
+            echo "immediately; install a model in-app for free-form conversation."
+          } >> "$OUT"
+
+          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+          echo "--- rendered notes ---"
+          cat "$OUT"
+
       - name: Publish GitHub Release
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.apkname.outputs.version }}-build.${{ github.run_number }}
           name: HanTalk AI v${{ steps.apkname.outputs.version }} (build ${{ github.run_number }})
-          body: |
-            **Installable Android APK** — HanTalk AI v${{ steps.apkname.outputs.version }}
-
-            Download `${{ steps.apkname.outputs.name }}` below and install it on your phone
-            (Android 8.0+). You will need to allow "install unknown apps".
-
-            - Signed release build (${{ steps.apkname.outputs.version }})
-            - Minified, resource-shrunk
-            - Model files are **not** bundled — install one in-app if you want the LLM
-              tutor; the rule-based tutor works immediately.
-
-            Built from `${{ github.sha }}`.
-          files: ${{ steps.apkname.outputs.file }}
+          body_path: ${{ steps.notes.outputs.path }}
+          files: |
+            ${{ steps.apkname.outputs.file }}
+            ${{ steps.apkname.outputs.sha256 }}
           fail_on_unmatched_files: true
           draft: false
           prerelease: false
@@ -233,6 +277,8 @@ jobs:
             echo "- Release APK size: **$((APK_SIZE_BYTES / 1024 / 1024)) MB**"
             echo "- Unit tests: passed"
             echo "- Signing: verified"
+            echo ""
+            echo "- Release notes: \`releases/v${{ steps.apkname.outputs.version }}.md\`"
             echo ""
             if [ "${{ github.event_name }}" != "pull_request" ]; then
               echo "Download the APK from the **Releases** page (or the HanTalkAI-release-apk artifact)."

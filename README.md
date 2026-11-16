@@ -9,18 +9,23 @@ No account, no server, no network required once installed.
 
 ## Download the APK
 
-**[⬇ Download HanTalkAI-1.0.0-release.apk](https://github.com/smfahadelahi/HanTalkAI/releases/latest)**
+**[⬇ Download HanTalkAI-1.1.0-release.apk](https://github.com/smfahadelahi/HanTalkAI/releases/latest)**
+
+Latest: **v1.1.0 — voice-first release** · [release notes](releases/v1.1.0.md) ·
+[full changelog](releases/CHANGELOG.md)
 
 Open the link, download, and install on your phone (Android 8.0+). You will need to
 allow "install unknown apps" for your browser or file manager.
 
-Every build on `main` publishes a new [release](../../releases) with the APK attached,
-so that link always points at the newest one.
+Every build on `main` publishes a new [release](../../releases) with the APK and a
+`.sha256` checksum attached, so that link always points at the newest one.
+Release notes for each version live in [`releases/`](releases) and are published
+verbatim as the GitHub Release description.
 
 | | |
 |---|---|
 | **Installed size** | ~105 MB (103 MB of it is MediaPipe's native inference engine) |
-| **Download size** | ~43 MB (native libraries compress well) |
+| **Download size** | ~44 MB (native libraries compress well) |
 | **Minimum Android** | 8.0 (API 26) |
 | **Voice** | Android speech recognition + Korean TTS (both optional) |
 
