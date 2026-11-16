@@ -9,25 +9,47 @@ No account, no server, no network required once installed.
 
 ## Download the APK
 
-**[⬇ Download HanTalkAI-1.0.0-release.apk](https://github.com/smfahadelahi/HanTalkAI/releases/latest)**
+**[⬇ Download HanTalkAI-1.1.0-release.apk](https://github.com/smfahadelahi/HanTalkAI/releases/latest)**
+
+Latest: **v1.1.0 — voice-first release** · [release notes](releases/v1.1.0.md) ·
+[full changelog](releases/CHANGELOG.md)
 
 Open the link, download, and install on your phone (Android 8.0+). You will need to
 allow "install unknown apps" for your browser or file manager.
 
-Every build on `main` publishes a new [release](../../releases) with the APK attached,
-so that link always points at the newest one.
+Every build on `main` publishes a new [release](../../releases) with the APK and a
+`.sha256` checksum attached, so that link always points at the newest one.
+Release notes for each version live in [`releases/`](releases) and are published
+verbatim as the GitHub Release description.
 
 | | |
 |---|---|
 | **Installed size** | ~105 MB (103 MB of it is MediaPipe's native inference engine) |
-| **Download size** | ~43 MB (native libraries compress well) |
+| **Download size** | ~44 MB (native libraries compress well) |
 | **Minimum Android** | 8.0 (API 26) |
+| **Voice** | Android speech recognition + Korean TTS (both optional) |
 
 > CI signs the release APK with a throwaway key generated per build, so builds from
 > different runs are not upgrade-compatible — uninstall before installing a newer one.
 > For a stable key, add the four `KEYSTORE_*` / `KEY_*` secrets listed in the workflow.
 
 ## What it does
+
+### 0. Voice mode (the default screen)
+
+![Voice mode home screen](design/voice-mode-screen.png)
+
+The app opens on a big, animated talk button — the idea is that a total beginner
+can start a Korean conversation in one tap, without knowing the alphabet first.
+
+- **Tap to speak Korean or English.** Android's speech recogniser sends the
+  question straight to the tutor; the answer is read back with Korean text-to-speech.
+- **One sentence to repeat.** Every visit offers a fresh phrase with *Hear it*,
+  *Slowly* (0.7× for first-time pronunciation) and *Practise*.
+- **Nothing is hidden.** The full text answer, romanisation and the rest of the
+  app are one tap away — typing is never blocked by voice.
+- **Graceful without Google services.** If no speech service or Korean TTS voice
+  is installed, the screen says so in plain language and falls back to typing.
 
 ### 1. AI Tutor
 A chat tutor that teaches Korean. It works in two modes and switches automatically:
@@ -40,6 +62,15 @@ A chat tutor that teaches Korean. It works in two modes and switches automatical
   100 % offline on the phone. If the model fails to load, the app silently
   falls back to the offline tutor instead of breaking.
 
+### 1b. Design
+A voice-first design system built on Material 3 but deliberately not stock:
+warm "한지 paper" surfaces with hairline borders instead of grey tonal cards,
+a brand gradient for hero surfaces, jade/coral/amber semantic accents, an
+8-step type scale with tighter letter-spacing on display sizes, 20–32 dp
+corner radii, and a custom bottom bar whose selected destination gets a
+gradient pill. Full light **and** dark themes; the voice orb, progress bars and
+all state changes are animated.
+
 ### 2. Lessons
 Six themed sets — greetings, introductions, café, directions, numbers, small talk —
 with 37 phrases. Each phrase opens a sheet with a syllable-by-syllable **jamo
@@ -51,8 +82,8 @@ live demo syllable (ㄱ → 가). Progress is saved so you can see how many lett
 you have marked as learned.
 
 ### 4. Practice
-Translation drills scored by edit distance, plus Korean **text-to-speech**
-playback, a day streak and a best-score record.
+Translation drills scored by edit distance, answered by typing **or by voice**,
+plus Korean text-to-speech playback, a day streak and a best-score record.
 
 ---
 
@@ -116,7 +147,7 @@ app/src/main/java/com/hantalk/koreanai/
 ├── domain/          Hangul engine, curriculum data, similarity scoring (pure Kotlin)
 ├── llm/             MediaPipe wrapper, model registry, offline rule-based tutor
 ├── data/            Preferences, model storage, resumable downloader
-├── speech/          Korean text-to-speech
+├── speech/          Korean text-to-speech + speech recognition
 └── ui/              Compose screens, theme, ViewModel
 ```
 

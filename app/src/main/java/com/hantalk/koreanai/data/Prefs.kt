@@ -33,6 +33,11 @@ class Prefs(context: Context) {
         get() = sp.getLong(KEY_LAST_PRACTICE_DAY, 0L)
         set(value) = sp.edit().putLong(KEY_LAST_PRACTICE_DAY, value).apply()
 
+    /** Read tutor replies out loud automatically while in voice mode. */
+    var autoSpeak: Boolean
+        get() = sp.getBoolean(KEY_AUTO_SPEAK, true)
+        set(value) = sp.edit().putBoolean(KEY_AUTO_SPEAK, value).apply()
+
     var learnedLetters: Set<String>
         get() = sp.getStringSet(KEY_LEARNED_LETTERS, emptySet()) ?: emptySet()
         set(value) = sp.edit().putStringSet(KEY_LEARNED_LETTERS, value).apply()
@@ -72,5 +77,6 @@ class Prefs(context: Context) {
         const val KEY_STREAK = "streak_days"
         const val KEY_LAST_PRACTICE_DAY = "last_practice_day"
         const val KEY_LEARNED_LETTERS = "learned_letters"
+        const val KEY_AUTO_SPEAK = "auto_speak"
     }
 }

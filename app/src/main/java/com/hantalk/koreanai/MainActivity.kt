@@ -12,8 +12,12 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hantalk.koreanai.ui.HanTalkApp
 import com.hantalk.koreanai.ui.HanTalkViewModel
@@ -25,6 +29,18 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             HanTalkTheme {
+                // Dark mode flips the status/navigation bar icons to white.
+                val view = LocalView.current
+                val dark = isSystemInDarkTheme()
+                if (!view.isInEditMode) {
+                    SideEffect {
+                        val window = (view.context as ComponentActivity).window
+                        WindowCompat.getInsetsController(window, view).apply {
+                            isAppearanceLightStatusBars = !dark
+                            isAppearanceLightNavigationBars = !dark
+                        }
+                    }
+                }
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val viewModel: HanTalkViewModel = viewModel()
                     HanTalkApp(viewModel)

@@ -12,6 +12,20 @@
         android:name="android.hardware.microphone"
         android:required="false" />
 
+    <!--
+      Package visibility (Android 11+) for the two speech services the voice-first
+      UI relies on. Without these queries SpeechRecognizer.isRecognitionAvailable()
+      and TTS engine discovery return false even when the services exist.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:name=".HanTalkApplication"
         android:allowBackup="true"

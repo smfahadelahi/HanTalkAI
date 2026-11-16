@@ -29,7 +29,9 @@ data class ChatMessage(
     val id: Long,
     val text: String,
     val fromUser: Boolean,
-    val streaming: Boolean = false
+    val streaming: Boolean = false,
+    /** True when this reply was created in voice mode and should be read out. */
+    val spoken: Boolean = false
 )
 
 data class ModelUiState(
@@ -79,6 +81,66 @@ class HanTalkViewModel(app: Application) : AndroidViewModel(app) {
     private var chatJob: Job? = null
     private var nextId = 1L
 
+    // ---------- Voice mode ----------
+    /** Replies are read aloud automatically while voice mode is on. */
+    private val _autoSpeak = MutableStateFlow(prefs.autoSpeak)
+    val autoSpeak: StateFlow<Boolean> = _autoSpeak.asStateFlow()
+
+    /** The Korean sentence the tutor most recently said — shown as a "say this". */
+    private val _sayThis = MutableStateFlow<Phrase?>(null)
+    val sayThis: StateFlow<Phrase?> = _sayThis.asStateFlow()
+
+    /** True while a spoken question is being turned into a chat message. */
+    private val _voiceThinking = MutableStateFlow(false)
+    val voiceThinking: StateFlow<Boolean> = _voiceThinking.asStateFlow()
+
+    fun toggleAutoSpeak() {
+        _autoSpeak.value = !_autoSpeak.value
+        prefs.autoSpeak = _autoSpeak.value
+    }
+
+    /**
+     * Sends a question that came in through the microphone. The answer is marked
+     * as [ChatMessage.spoken] so the voice screen reads it back automatically.
+     */
+    fun sendSpokenMessage(text: String) {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty() || _chatBusy.value) return
+        _voiceThinking.value = true
+        sendMessage(trimmed, spoken = true, onFirstReply = { _voiceThinking.value = false })
+    }
+
+    /**
+     * Pulls out the part of a tutor reply that is worth reading aloud: Korean
+     * sentences only, with markdown, romanisation and tables removed so TTS
+     * never spells out "asterisk asterisk".
+     */
+    fun speakableReply(raw: String): String {
+        val koreanOnly = raw
+            .lineSequence()
+            .filterNot { it.trimStart().startsWith("|") }
+            .joinToString("\n")
+            .replace(Regex("\\*\\*(.+?)\\*\\*"), "$1")
+            .replace(Regex("\\*(.+?)\\*"), "$1")
+            .replace(Regex("\\[(.*?)]\\((.*?)\\)"), "$1")
+            .replace(Regex("(?m)^\\s*[•\\-\\*]\\s*"), "")
+            .replace("\u2014", ",")
+
+        val sentences = koreanOnly
+            .split(Regex("(?<=[.!?다요])\\s+|\\n+"))
+            .map { it.trim() }
+            .filter { segment ->
+                val hangul = segment.count { it in '\uAC00'..'\uD7A3' }
+                hangul >= 2 && hangul * 2 >= segment.replace(" ", "").length
+            }
+        return sentences.joinToString(" ").take(300)
+    }
+
+    /** Suggests a fresh phrase for voice practice. */
+    fun nextSayThis() {
+        _sayThis.value = Curriculum.allPhrases.random()
+    }
+
     // ---------- Models ----------
     private val _models = MutableStateFlow<List<ModelUiState>>(emptyList())
     val models: StateFlow<List<ModelUiState>> = _models.asStateFlow()
@@ -106,6 +168,7 @@ class HanTalkViewModel(app: Application) : AndroidViewModel(app) {
     val selectedLetter: StateFlow<String?> = _selectedLetter.asStateFlow()
 
     init {
+        _sayThis.value = Curriculum.allPhrases.random()
         refreshModels()
         refreshStats()
         restoreModel()
@@ -113,29 +176,62 @@ class HanTalkViewModel(app: Application) : AndroidViewModel(app) {
 
     // ================= Chat =================
 
-    fun sendMessage(text: String) {
+    fun sendMessage(
+        text: String,
+        spoken: Boolean = false,
+        onFirstReply: (() -> Unit)? = null
+    ) {
         val trimmed = text.trim()
         if (trimmed.isEmpty() || _chatBusy.value) return
 
         val userMessage = ChatMessage(nextId++, trimmed, fromUser = true)
         val replyId = nextId++
         _messages.update {
-            it + userMessage + ChatMessage(replyId, "", fromUser = false, streaming = true)
+            it + userMessage + ChatMessage(
+                id = replyId,
+                text = "",
+                fromUser = false,
+                streaming = true,
+                spoken = spoken
+            )
         }
         _chatBusy.value = true
 
         chatJob?.cancel()
         chatJob = viewModelScope.launch {
             try {
+                var announced = false
+                fun announceOnce() {
+                    if (!announced) {
+                        announced = true
+                        _voiceThinking.value = false
+                        onFirstReply?.invoke()
+                    }
+                }
                 engine.streamReply(trimmed)
                     .catch { throwable ->
                         setMessage(replyId, LocalTutor.reply(trimmed), streaming = false)
                     }
                     .collect { partial ->
+                        if (partial.isNotBlank()) announceOnce()
                         setMessage(replyId, partial, streaming = true)
                     }
-                setMessage(replyId, currentText(replyId), streaming = false)
+                val finished = currentText(replyId)
+                if (finished.isBlank()) {
+                    // The model streamed nothing (or was stopped early): never
+                    // leave an empty bubble behind.
+                    setMessage(
+                        replyId,
+                        "Sorry — I didn't manage to answer that. Try asking in a " +
+                            "different way, or rephrase it in Korean.",
+                        streaming = false
+                    )
+                } else {
+                    setMessage(replyId, finished, streaming = false)
+                }
+                announceOnce()
             } catch (t: Throwable) {
+                _voiceThinking.value = false
                 setMessage(
                     replyId,
                     "Something went wrong, so here is the offline answer:\n\n" +
