@@ -4,16 +4,16 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- 흰색 말풍선 -->
+    <!-- White rounded speech square -->
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M32,30h44a10,10 0 0 1 10,10v24a10,10 0 0 1 -10,10h-20l-14,12v-12h-10a10,10 0 0 1 -10,-10v-24a10,10 0 0 1 10,-10z" />
+        android:pathData="M34,30h40a12,12 0 0 1 12,12v20a12,12 0 0 1 -12,12h-14l-16,12v-12h-10a12,12 0 0 1 -12,-12v-20a12,12 0 0 1 12,-12z" />
     <!-- 한 -->
     <path
-        android:fillColor="#FF4466D5"
-        android:pathData="M42,42h6v8h6v-8h6v24h-6v-11h-6v11h-6z" />
+        android:fillColor="#FF2A47E0"
+        android:pathData="M42,40h5v7h5v-7h5v22h-5v-10h-5v10h-5z" />
     <!-- 글 -->
     <path
-        android:fillColor="#FF4466D5"
-        android:pathData="M64,42h6v14h-6z M64,60h6v6h-6z" />
+        android:fillColor="#FF2A47E0"
+        android:pathData="M63,40h5v13h-5z M63,56h5v6h-5z" />
 </vector>
